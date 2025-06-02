@@ -3,8 +3,8 @@ import random
 from PIL import Image as PILImage
 from IPython.display import display
 
-# Set path to folder containing images
-image_folder = "/content/drive/MyDrive/dressme.ai/data/images"
+image_folder = "./data/images"
+output_file = "./data/combination_scored.txt"
 
 # Get list of top and bottom image filenames
 top_images = sorted([f for f in os.listdir(image_folder) if f.startswith('top_') and f.endswith('.jpeg')])
@@ -12,9 +12,6 @@ bottom_images = sorted([f for f in os.listdir(image_folder) if f.startswith('bot
 
 # Track used pairs to avoid duplicates
 shown_pairs = set()
-
-# Output file
-output_file = "/content/drive/MyDrive/dressme.ai/data/combination_scored_v2.txt"
 
 # Load previously logged pairs from file if it exists
 if os.path.exists(output_file):
