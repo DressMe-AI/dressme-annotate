@@ -1,79 +1,115 @@
 import os
 import random
-from PIL import Image as PILImage
-from IPython.display import display
+import tkinter as tk
+from tkinter import messagebox
+from PIL import Image, ImageTk
 
+# Configuration
 image_folder = "./data/images"
 output_file = "./data/combination_scored.txt"
 
-# Get list of top and bottom image filenames
-top_images = sorted([f for f in os.listdir(image_folder) if f.startswith('top_') and f.endswith('.jpeg')])
-bottom_images = sorted([f for f in os.listdir(image_folder) if f.startswith('bottom_') and f.endswith('.jpeg')])
-
-# Track used pairs to avoid duplicates
+# Prepare image lists
+top_images = sorted([f for f in os.listdir(image_folder) if f.startswith("top_") and f.endswith(".jpeg")])
+bottom_images = sorted([f for f in os.listdir(image_folder) if f.startswith("bottom_") and f.endswith(".jpeg")])
 shown_pairs = set()
 
-# Load previously logged pairs from file if it exists
+# Load existing log
 if os.path.exists(output_file):
     with open(output_file, "r") as f:
         for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split(",")
-            top_part = parts[0].split(":")[1]
-            bottom_part = parts[1].split(":")[1]
-            shown_pairs.add((top_part, bottom_part))
+            parts = line.strip().split(",")
+            if len(parts) >= 2:
+                top_id = parts[0].split(":")[1]
+                bottom_id = parts[1].split(":")[1]
+                shown_pairs.add((f"{top_id}.jpeg", f"{bottom_id}.jpeg"))
+
+# GUI setup
+root = tk.Tk()
+root.title("Image Pair Rating")
+
+# Image display labels
+top_img_label = tk.Label(root)
+top_img_label.pack(pady=10)
+
+bottom_img_label = tk.Label(root)
+bottom_img_label.pack(pady=10)
+
+# Global pair state
+current_pair = [None, None]
 
 
-def show_pair_and_log():
-    while len(shown_pairs) < len(top_images) * len(bottom_images):
-        top = random.choice(top_images)
-        bottom = random.choice(bottom_images)
-        pair_key = (top, bottom)
+def load_image(path):
+    try:
+        img = Image.open(path)
+        img.thumbnail((300, 300))
+        img = img.rotate(-90, expand=True)
+        return ImageTk.PhotoImage(img)
+    except Exception as e:
+        print(f"Error loading image {path}: {e}")
+        return None
 
-        if pair_key in shown_pairs:
-            continue  # Skip if already shown
 
-        top_id = top.replace(".jpeg", "")
-        bottom_id = bottom.replace(".jpeg", "")
-        print(f"\nRecommendation: top:{top_id}, bottom:{bottom_id}")
+def get_next_pair():
+    all_combinations = [(t, b) for t in top_images for b in bottom_images]
+    random.shuffle(all_combinations)
+    for pair in all_combinations:
+        if pair not in shown_pairs:
+            return pair
+    return None
 
-        try:
-            img_top = PILImage.open(os.path.join(image_folder, top))
-            img_top.thumbnail((300, 300))  # Max width/height
-            img_top = img_top.rotate(-90, expand=True)
-            display(img_top)
 
-            img_bottom = PILImage.open(os.path.join(image_folder, bottom))
-            img_bottom.thumbnail((300, 300))
-            img_bottom = img_bottom.rotate(-90, expand=True)
-            display(img_bottom)
+def update_images():
+    pair = get_next_pair()
+    if not pair:
+        messagebox.showinfo("Done", "All unique combinations have been shown.")
+        root.quit()
+        return
 
-        except Exception as e:
-            print(f"Failed to load/display image pair {top}, {bottom}: {e}")
-            continue
+    current_pair[0], current_pair[1] = pair
+    top_path = os.path.join(image_folder, current_pair[0])
+    bottom_path = os.path.join(image_folder, current_pair[1])
 
-        while True:
-          try:
-              feedback_input = input("Rate this combination (1 for good, 0 for bad, q to quit): ").strip()
-              if feedback_input == "q":
-                  print("Exiting by user request.")
-                  return  # ends the function
-              feedback = int(feedback_input)
-              if feedback in [0, 1]:
-                  break
-              print("Invalid input. Please enter 1, 0, or q.")
-          except ValueError:
-              print("Please enter a numeric value or 'q' to quit.")
+    top_img = load_image(top_path)
+    bottom_img = load_image(bottom_path)
 
-        with open(output_file, "a") as f:
-            f.write(f"top:{top_id},bottom:{bottom_id},{feedback}\n")
+    if top_img:
+        top_img_label.configure(image=top_img)
+        top_img_label.image = top_img
+    if bottom_img:
+        bottom_img_label.configure(image=bottom_img)
+        bottom_img_label.image = bottom_img
 
-        shown_pairs.add(pair_key)
-        print("Saved feedback. Showing next...\n")
+    top_id = current_pair[0].replace(".jpeg", "")
+    bottom_id = current_pair[1].replace(".jpeg", "")
+    print(f"\nRecommendation: top:{top_id}, bottom:{bottom_id}")
 
-    print("All unique combinations have been shown.")
 
-#Run this after running everything above on Jupyter Notebook.
-show_pair_and_log()
+def rate_pair(score):
+    top_id = current_pair[0].replace(".jpeg", "")
+    bottom_id = current_pair[1].replace(".jpeg", "")
+    with open(output_file, "a") as f:
+        f.write(f"top:{top_id},bottom:{bottom_id},{score}\n")
+    shown_pairs.add((current_pair[0], current_pair[1]))
+    print("Saved feedback. Showing next...\n")
+    update_images()
+
+
+# Control buttons
+button_frame = tk.Frame(root)
+button_frame.pack(pady=20)
+
+good_button = tk.Button(button_frame, text="Good (1)", width=15, command=lambda: rate_pair(1))
+good_button.pack(side="left", padx=10)
+
+bad_button = tk.Button(button_frame, text="Bad (0)", width=15, command=lambda: rate_pair(0))
+bad_button.pack(side="left", padx=10)
+
+quit_button = tk.Button(button_frame, text="Quit (q)", width=15, command=root.quit)
+quit_button.pack(side="left", padx=10)
+
+# Start first pair
+update_images()
+
+# Launch GUI
+root.mainloop()
+
