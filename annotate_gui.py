@@ -3,6 +3,9 @@ import random
 import streamlit as st
 from PIL import Image
 
+
+#streamlit run annotate_gui.py <-- to run
+
 # Config
 image_folder = "./data/images"
 output_file = "./data/combination_scored.txt"
@@ -25,6 +28,10 @@ if os.path.exists(output_file):
 if "current_pair" not in st.session_state:
     st.session_state.current_pair = None
 
+if st.session_state.get("quit"):
+    st.write("Session ended by user.")
+    st.stop()
+
 def get_next_pair():
     all_combinations = [(t, b) for t in top_images for b in bottom_images]
     random.shuffle(all_combinations)
@@ -41,7 +48,7 @@ if st.session_state.current_pair is None:
 
 pair = st.session_state.current_pair
 if pair is None:
-    st.write("✅ All unique combinations have been shown.")
+    st.write("All unique combinations have been shown.")
     st.stop()
 
 top_path = os.path.join(image_folder, pair[0])
@@ -56,7 +63,7 @@ top_id = pair[0].replace(".jpeg", "")
 bottom_id = pair[1].replace(".jpeg", "")
 st.markdown(f"**Recommendation:** top:{top_id}, bottom:{bottom_id}")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 if col1.button("👍 Good"):
     with open(output_file, "a") as f:
         f.write(f"top:{top_id},bottom:{bottom_id},1\n")
@@ -71,3 +78,6 @@ if col2.button("👎 Bad"):
     show_next_pair()
     st.rerun()
 
+if col3.button("❌ Quit"):
+    st.session_state.quit = True
+    st.rerun()
