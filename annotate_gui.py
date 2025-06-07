@@ -62,11 +62,12 @@ if col1.button("👍 Good"):
         f.write(f"top:{top_id},bottom:{bottom_id},1\n")
     shown_pairs.add(pair)
     show_next_pair()
-    st.experimental_rerun()
+    st.rerun()
 
 if col2.button("👎 Bad"):
     with open(output_file, "a") as f:
         f.write(f"top:{top_id},bottom:{bottom_id},0\n")
     shown_pairs.add(pair)
     show_next_pair()
-    st.experimental_rerun()
+    st.rerun()
+
